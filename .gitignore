@@ -26,9 +26,3 @@ Thumbs.db
 
 # 项目特定目录
 queue/
-config/connection.ini
-config/host_list
-config/internalcmd_key
-config/log.ini
-config/me
-config/smtp.ini
