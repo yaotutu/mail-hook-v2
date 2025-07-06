@@ -1,9 +1,3 @@
-// extract_mail_data
-
-// documentation via: haraka -c /Users/yaotutu/Desktop/code/mail-hook-v2 -h plugins/extract_mail_data
-
-// Put your plugin code here
-// type: `haraka -h Plugins` for documentation on how to create a plugin
 // plugins/extract_mail_data.js
 
 const { simpleParser } = require("mailparser");
@@ -13,6 +7,32 @@ exports.register = function () {
   this.loginfo("🧩 extract_mail_data 插件注册成功");
   this.register_hook("data_post", "extract_mail_data");
 };
+
+// ✅ 转发人邮箱提取工具函数
+function extractRealForwarder(envelopeFrom) {
+  if (!envelopeFrom) return "";
+
+  // 网易邮箱（163.com / 126.com）
+  const neteaseMatch = envelopeFrom.match(/^auto_([^+]+)\+/);
+  if (neteaseMatch && neteaseMatch[1]) {
+    return `${neteaseMatch[1]}@163.com`;
+  }
+
+  // Gmail（creo+xxx@gmail.com）
+  const gmailMatch = envelopeFrom.match(/^([^+]+)\+[^@]+@gmail\.com$/);
+  if (gmailMatch && gmailMatch[1]) {
+    return `${gmailMatch[1]}@gmail.com`;
+  }
+
+  // 一般自定义域（yaotutu+public@yaotutu.top）
+  const normalMatch = envelopeFrom.match(/^(.+?)\+[^@]+@(.+)$/);
+  if (normalMatch && normalMatch[1] && normalMatch[2]) {
+    return `${normalMatch[1]}@${normalMatch[2]}`;
+  }
+
+  // fallback
+  return envelopeFrom;
+}
 
 exports.extract_mail_data = function (next, connection) {
   const transaction = connection.transaction;
@@ -32,20 +52,23 @@ exports.extract_mail_data = function (next, connection) {
 
     const timestamp = Date.now();
 
-    const mailData = {
-      // ✅ 改这里：拿到发起 SMTP 投递的邮箱（转发者）
-      senderPhone: String(transaction.mail_from?.address() || ""),
+    // 原始 envelope-from
+    const envelopeFrom = String(transaction.mail_from?.address() || "");
 
-      // 💌 原始发件人（可选：用于分析）
+    const mailData = {
+      // ✅ 经过智能解析的中间转发人邮箱（比如 zhaoyafeng1995@163.com）
+      senderPhone: extractRealForwarder(envelopeFrom),
+
+      // ✅ 原始邮件头 From（真实发件人，比如 noreply@xdaforums.com）
       originalFrom: String(parsed.from?.value?.[0]?.address || ""),
 
-      // ✅ 邮件正文
+      // ✅ 邮件正文内容
       smsContent: String(parsed.text || ""),
 
-      // ✅ 时间戳
+      // ✅ 接收时间戳
       smsReceivedAt: timestamp,
 
-      // ✅ 可以尝试从头部进一步提取路径（可选）
+      // ✅ 从头部尝试获取更详细的转发链路信息（可选）
       forwardedFrom:
         parsed.headers.get("x-forwarded-for") ||
         parsed.headers.get("delivered-to") ||
@@ -54,6 +77,7 @@ exports.extract_mail_data = function (next, connection) {
 
     this.loginfo("📦 提取的邮件数据:", mailData);
 
+    // ✅ 异步发送 Webhook，不阻塞主流程
     sendToWebhooks(mailData).catch((err) => {
       this.logerror("Webhook发送失败:", err.message);
     });
