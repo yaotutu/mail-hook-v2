@@ -16,7 +16,7 @@ exports.register = function () {
 
 exports.extract_mail_data = function (next, connection) {
   const transaction = connection.transaction;
-  if (!transaction) return next(); // 没有 transaction，直接跳过
+  if (!transaction) return next();
 
   const message_stream = transaction.message_stream;
   if (!message_stream) {
@@ -29,33 +29,35 @@ exports.extract_mail_data = function (next, connection) {
       this.logerror("邮件解析失败: " + err.message);
       return next();
     }
-    // 这里 parsed 就是解析后的邮件对象
-    // this.loginfo("邮件主题: " + parsed.subject);
-    // this.loginfo("发件人: " + JSON.stringify(parsed.from));
-    // this.loginfo("正文: " + parsed.text);
 
     const timestamp = Date.now();
-    this.loginfo("邮件接收时间戳: " + timestamp);
 
     const mailData = {
-      senderPhone: String(
-        parsed.from?.value?.[0]?.address || parsed.from?.text || ""
-      ),
-      smsContent: String(parsed.text || ""),
-      smsReceivedAt: Date.now(), // 直接使用数字时间戳
-    };
-    this.loginfo("提取的邮件数据:", {
-      senderPhone: mailData.senderPhone,
-      smsContent: mailData.smsContent,
-      smsReceivedAt: mailData.smsReceivedAt,
-    });
+      // ✅ 改这里：拿到发起 SMTP 投递的邮箱（转发者）
+      senderPhone: String(transaction.mail_from?.address() || ""),
 
-    // 异步发送webhook，不影响主流程
+      // 💌 原始发件人（可选：用于分析）
+      originalFrom: String(parsed.from?.value?.[0]?.address || ""),
+
+      // ✅ 邮件正文
+      smsContent: String(parsed.text || ""),
+
+      // ✅ 时间戳
+      smsReceivedAt: timestamp,
+
+      // ✅ 可以尝试从头部进一步提取路径（可选）
+      forwardedFrom:
+        parsed.headers.get("x-forwarded-for") ||
+        parsed.headers.get("delivered-to") ||
+        parsed.headers.get("received"),
+    };
+
+    this.loginfo("📦 提取的邮件数据:", mailData);
+
     sendToWebhooks(mailData).catch((err) => {
       this.logerror("Webhook发送失败:", err.message);
     });
 
-    // 继续邮件流程
     next();
   });
 };
