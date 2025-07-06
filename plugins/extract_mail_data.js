@@ -13,19 +13,19 @@ function extractRealForwarder(envelopeFrom) {
   if (!envelopeFrom) return "";
 
   // 网易邮箱（163.com / 126.com）
-  const neteaseMatch = envelopeFrom.match(/^auto_([^+]+)\+/);
+  const neteaseMatch = envelopeFrom.match(/^auto_([^+]+)\+/i);
   if (neteaseMatch && neteaseMatch[1]) {
     return `${neteaseMatch[1]}@163.com`;
   }
 
   // Gmail（creo+xxx@gmail.com）
-  const gmailMatch = envelopeFrom.match(/^([^+]+)\+[^@]+@gmail\.com$/);
+  const gmailMatch = envelopeFrom.match(/^([^+]+)\+[^@]+@gmail\.com$/i);
   if (gmailMatch && gmailMatch[1]) {
     return `${gmailMatch[1]}@gmail.com`;
   }
 
   // 一般自定义域（yaotutu+public@yaotutu.top）
-  const normalMatch = envelopeFrom.match(/^(.+?)\+[^@]+@(.+)$/);
+  const normalMatch = envelopeFrom.match(/^(.+?)\+[^@]+@(.+)$/i);
   if (normalMatch && normalMatch[1] && normalMatch[2]) {
     return `${normalMatch[1]}@${normalMatch[2]}`;
   }
@@ -54,6 +54,8 @@ exports.extract_mail_data = function (next, connection) {
 
     // ✅ 获取 SMTP envelope 发件人
     const envelopeFrom = String(transaction.mail_from?.address() || "");
+    this.logdebug("原始 envelopeFrom 值:", envelopeFrom);
+    this.loginfo("原始 envelopeFrom 值:", envelopeFrom);
 
     // ✅ 获取 SMTP envelope 收件人（你自己的 public@yaotutu.top）
     const rcpt = transaction.rcpt_to?.[0];
