@@ -10,7 +10,7 @@ const WEBHOOK_URLS_MAP = [
   },
   {
     receiverName: "sj",
-    url: "http://192.168.55.100:3000/api/webhook/mail",
+    url: "http://47.94.52.234:5000/api/webhook/mail",
   },
   {
     receiverName: "test",
