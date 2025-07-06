@@ -3,7 +3,8 @@
   "description": "An SMTP Server",
   "version": "0.0.1",
   "dependencies": {
-    "mailparser": "^3.7.4"
+    "mailparser": "^3.7.4",
+    "axios": "^1.6.7"
   },
   "repository": "",
   "license": "MIT"
