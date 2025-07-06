@@ -2,6 +2,7 @@
 const WEBHOOK_URLS = [
   // 在此添加webhook地址，例如：
   "http://192.168.55.100:3000/api/webhook/mail",
+  "http://47.94.52.234:5000/api/webhook/mail",
 ];
 
 const axios = require("axios");
@@ -23,8 +24,15 @@ async function sendToWebhooks(data) {
           "Content-Type": "application/json",
         },
       })
+      .then((response) => {
+        console.log(`Webhook调用成功: ${url}`, `状态码: ${response.status}`);
+        return response;
+      })
       .catch((error) => {
-        console.error(`Webhook调用失败: ${url}`, error.message);
+        const errorMsg = error.response
+          ? `状态码: ${error.response.status} 错误: ${error.response.data}`
+          : `错误: ${error.message}`;
+        console.error(`Webhook调用失败: ${url}`, errorMsg);
         return null;
       });
   });
