@@ -52,23 +52,20 @@ exports.extract_mail_data = function (next, connection) {
 
     const timestamp = Date.now();
 
-    // 原始 envelope-from
+    // ✅ 获取 SMTP envelope 发件人
     const envelopeFrom = String(transaction.mail_from?.address() || "");
 
+    // ✅ 获取 SMTP envelope 收件人（你自己的 public@yaotutu.top）
+    const rcpt = transaction.rcpt_to?.[0];
+    const receiverName = rcpt?.user || ""; // ← 你要的 "public"
+
     const mailData = {
-      // ✅ 经过智能解析的中间转发人邮箱（比如 zhaoyafeng1995@163.com）
+      receiverName, // ✅ 加上这个字段
+
       senderPhone: extractRealForwarder(envelopeFrom),
-
-      // ✅ 原始邮件头 From（真实发件人，比如 noreply@xdaforums.com）
       originalFrom: String(parsed.from?.value?.[0]?.address || ""),
-
-      // ✅ 邮件正文内容
       smsContent: String(parsed.text || ""),
-
-      // ✅ 接收时间戳
       smsReceivedAt: timestamp,
-
-      // ✅ 从头部尝试获取更详细的转发链路信息（可选）
       forwardedFrom:
         parsed.headers.get("x-forwarded-for") ||
         parsed.headers.get("delivered-to") ||
@@ -77,8 +74,7 @@ exports.extract_mail_data = function (next, connection) {
 
     this.loginfo("📦 提取的邮件数据:", mailData);
 
-    // ✅ 异步发送 Webhook，不阻塞主流程
-    sendToWebhooks(mailData).catch((err) => {
+    sendToWebhooks(mailData, receiverName).catch((err) => {
       this.logerror("Webhook发送失败:", err.message);
     });
 
